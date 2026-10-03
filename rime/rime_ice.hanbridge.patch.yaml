@@ -1,0 +1,17 @@
+# Merge this patch into %APPDATA%\Rime\rime_ice.custom.yaml.
+# The installer inserts the same managed block and backs up the original file.
+
+patch:
+  "switches/+":
+    - name: hanbridge_translation
+      reset: 1
+      states: [ 翻译关, 翻译开 ]
+
+  "key_binder/bindings/+":
+    - { when: always, accept: Control+Alt+E, toggle: hanbridge_translation }
+
+  "engine/processors/@before 0":
+    lua_processor@*hanbridge_refresh
+
+  "engine/filters/@before last":
+    lua_filter@*hanbridge_filter

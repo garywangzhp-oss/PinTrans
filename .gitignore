@@ -1,0 +1,27 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+artifacts/
+
+# Local HanBridge runtime data
+data/
+logs/
+*.db
+*.db-shm
+*.db-wal
+*.key
+secrets.json
+
+# Deployment staging
+dist/
+publish/
+*.zip
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
