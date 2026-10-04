@@ -1,6 +1,6 @@
 -- HanBridge candidate filter.
--- Automatic mode translates the selected/first Chinese candidate.
--- Ctrl+Alt+P asks the model to infer and translate the raw pinyin.
+-- Persistent manual results keep selected/pinyin translations visible for the
+-- current composition instead of being replaced by automatic translation.
 
 local local_app_data = os.getenv("LOCALAPPDATA")
 if not local_app_data then
@@ -17,22 +17,7 @@ local request_tmp = request_file .. ".tmp"
 local response_file = ipc_dir .. "\\response.txt"
 
 local last_requested_key = nil
-local debug_marker = (os.getenv("TEMP") or ".") .. "\\hanbridge-debug.on"
-local debug_log_path = (os.getenv("TEMP") or ".") .. "\\hanbridge_debug.log"
-
-local function debug_log(message)
-    local marker = io.open(debug_marker, "rb")
-    if not marker then
-        return
-    end
-    marker:close()
-
-    local log = io.open(debug_log_path, "a")
-    if log then
-        log:write(os.date("%Y-%m-%d %H:%M:%S ") .. message .. "\n")
-        log:close()
-    end
-end
+local function debug_log(_) end
 
 local function count_han(text)
     local count = 0
@@ -132,10 +117,27 @@ local function is_english_candidate(candidate)
     return candidate and candidate.type == "hanbridge_en"
 end
 
+local function clear_auto_result()
+    _G.hanbridge_auto_source = nil
+    _G.hanbridge_auto_translation = nil
+end
+
+local function clear_manual_result()
+    _G.hanbridge_manual_result_source = nil
+    _G.hanbridge_manual_result_translation = nil
+end
+
+local function clear_pinyin_result()
+    _G.hanbridge_pinyin_result_source = nil
+    _G.hanbridge_pinyin_result_translation = nil
+end
+
 local function clear_task_state()
     last_requested_key = nil
     _G.hanbridge_manual_target = nil
     _G.hanbridge_pinyin_target = nil
+    clear_manual_result()
+    clear_pinyin_result()
 end
 
 local function filter(input, env)
@@ -148,15 +150,41 @@ local function filter(input, env)
         return
     end
 
+    local input_text = context.input or ""
+    local commit_text = context:get_commit_text() or ""
     local selected = context:get_selected_candidate()
-    local manual_target = _G.hanbridge_manual_target
-    local pinyin_target = _G.hanbridge_pinyin_target
-    if (selected and is_english_candidate(selected)) and not pinyin_target then
-        manual_target = nil
+
+    if _G.hanbridge_pinyin_target and _G.hanbridge_pinyin_target ~= input_text then
+        _G.hanbridge_pinyin_target = nil
+        clear_pinyin_result()
+    end
+    if _G.hanbridge_pinyin_result_source and _G.hanbridge_pinyin_result_source ~= input_text then
+        clear_pinyin_result()
+    end
+    if _G.hanbridge_manual_target and _G.hanbridge_manual_target ~= commit_text then
         _G.hanbridge_manual_target = nil
+        clear_manual_result()
+    end
+    if _G.hanbridge_manual_result_source and _G.hanbridge_manual_result_source ~= commit_text then
+        clear_manual_result()
     end
 
-    local mode = pinyin_target and "pinyin" or "chinese"
+    local pinyin_active = _G.hanbridge_pinyin_target
+        or _G.hanbridge_pinyin_result_source == input_text
+    local manual_active = _G.hanbridge_manual_target
+        or _G.hanbridge_manual_result_source == commit_text
+
+    if (selected and is_english_candidate(selected)) and not pinyin_active then
+        manual_active = false
+        _G.hanbridge_manual_target = nil
+        clear_manual_result()
+    end
+
+    if pinyin_active then
+        manual_active = false
+    end
+
+    local mode = pinyin_active and "pinyin" or "chinese"
     local first = true
     local source = nil
     local translated = nil
@@ -166,16 +194,36 @@ local function filter(input, env)
         first = false
 
         if is_first then
-            source = pinyin_target or manual_target or cand.text or ""
-            local translatable = false
-            if mode == "pinyin" then
-                translatable = string.len(source) >= 2 and not has_disallowed_shape(source)
+            if pinyin_active then
+                source = _G.hanbridge_pinyin_target or _G.hanbridge_pinyin_result_source or input_text
+                if _G.hanbridge_pinyin_result_source == source then
+                    translated = _G.hanbridge_pinyin_result_translation
+                end
+            elseif manual_active then
+                source = _G.hanbridge_manual_target or _G.hanbridge_manual_result_source or commit_text
+                if _G.hanbridge_manual_result_source == source then
+                    translated = _G.hanbridge_manual_result_translation
+                end
             else
+                source = cand.text or ""
+                if _G.hanbridge_auto_source and _G.hanbridge_auto_source ~= source then
+                    clear_auto_result()
+                end
+                if _G.hanbridge_auto_source == source then
+                    translated = _G.hanbridge_auto_translation
+                end
+            end
+
+            local translatable = false
+            if source and mode == "pinyin" then
+                translatable = string.len(source) >= 2 and not has_disallowed_shape(source)
+            elseif source then
                 translatable = count_han(source) >= 2 and not has_disallowed_shape(source)
             end
 
-            if translatable then
-                local request_key = mode .. "\n" .. source
+            if translatable and not translated then
+                local request_class = pinyin_active and "pinyin" or (manual_active and "manual" or "auto")
+                local request_key = request_class .. "\n" .. source
                 if request_key ~= last_requested_key then
                     if write_request(source, mode) then
                         last_requested_key = request_key
@@ -202,17 +250,21 @@ local function filter(input, env)
                     and response.translation ~= ""
                     and response.translation ~= source then
                     translated = response.translation
+                    if pinyin_active then
+                        _G.hanbridge_pinyin_result_source = source
+                        _G.hanbridge_pinyin_result_translation = translated
+                        _G.hanbridge_pinyin_target = nil
+                    elseif manual_active then
+                        _G.hanbridge_manual_result_source = source
+                        _G.hanbridge_manual_result_translation = translated
+                        _G.hanbridge_manual_target = nil
+                    else
+                        _G.hanbridge_auto_source = source
+                        _G.hanbridge_auto_translation = translated
+                    end
                     debug_log(string.format("yield_translation mode=%s start=%d end=%d", mode, cand.start, cand._end))
                 elseif response then
                     debug_log("discard_translation")
-                end
-
-                if response and response.mode == mode then
-                    if mode == "pinyin" then
-                        _G.hanbridge_pinyin_target = nil
-                    elseif manual_target then
-                        _G.hanbridge_manual_target = nil
-                    end
                 end
             end
         end
@@ -223,11 +275,11 @@ local function filter(input, env)
         local full_span = false
         local candidate_comment = " EN · 首选"
 
-        if mode == "pinyin" then
+        if pinyin_active then
             is_target = is_first
             full_span = true
             candidate_comment = " EN · 拼音"
-        elseif manual_target then
+        elseif manual_active then
             is_target = selected and not is_english_candidate(selected) and cand.text == selected.text
             full_span = true
             candidate_comment = " EN · 选中"
@@ -236,7 +288,7 @@ local function filter(input, env)
         end
 
         if translated and is_target then
-            local candidate_end = full_span and string.len(context.input) or cand._end
+            local candidate_end = full_span and string.len(input_text) or cand._end
             yield(Candidate(
                 "hanbridge_en",
                 cand.start,

@@ -18,8 +18,8 @@ Run each row after installing HanBridge with a configured provider.
 | APP-12 | Outlook classic | Compose and commit both candidates | Both output paths work | Pass |
 | APP-13 | New Outlook | Compose in a WebView field | Candidate 2 works like the Edge case | Pass |
 | APP-14 | Betterbird | Compose a message and wait for candidate 2 | Candidate 2 appears; selecting it commits English | Pass |
-| SEL-01 | Notepad | Highlight a non-first Chinese candidate and press `Ctrl+Alt+Enter` | English candidate appears next to the highlighted Chinese candidate | Pending |
-| PY-01 | Notepad | Type `yiqiehuan`, do not select a Chinese candidate, press `Ctrl+Alt+P` | Pinyin-inferred English candidate appears | Pending |
+| SEL-01 | Notepad | Highlight a non-first Chinese candidate and press `Ctrl+Alt+Enter` | English candidate appears next to the highlighted Chinese candidate | Pass |
+| PY-01 | Notepad | Type `yiqiehuan`, do not select a Chinese candidate, press `Ctrl+Alt+P` | Pinyin-inferred English candidate appears and remains visible | Pass |
 | SAFE-01 | Password field | Type Chinese with translation enabled | Best-effort detection suppresses network request; otherwise toggle off before typing | Pending |
 | SAFE-02 | Translation off | Type and wait | No model request; Chinese input remains responsive | Pass |
 | PERF-01 | Any text editor | Type continuously for 10 minutes | No input lag or candidate flicker | Pending |
