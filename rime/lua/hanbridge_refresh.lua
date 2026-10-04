@@ -1,14 +1,51 @@
--- Handles the internal F24 refresh signal emitted by the HanBridge bridge.
+-- Handles F24 refreshes and explicit translation shortcuts.
+
+local selected_translate_keys = {
+    ["Control+Alt+Return"] = true,
+    ["Control+Alt+Enter"] = true,
+    ["Control+Alt+KP_Enter"] = true
+}
+
+local pinyin_translate_keys = {
+    ["Control+Alt+P"] = true
+}
 
 local function processor(key, env)
-    if key:repr() ~= "F24" then
-        return 2
+    local context = env.engine.context
+    local representation = key:repr()
+
+    if not key:release()
+        and selected_translate_keys[representation]
+        and (context:is_composing() or context:has_menu()) then
+        if context:get_option("hanbridge_translation") then
+            local selected = context:get_selected_candidate()
+            local commit_text = context:get_commit_text()
+            _G.hanbridge_pinyin_target = nil
+            _G.hanbridge_manual_target =
+                (commit_text and commit_text ~= "" and commit_text)
+                or (selected and selected.text)
+                or nil
+            context:refresh_non_confirmed_composition()
+            return 1
+        end
     end
 
-    local context = env.engine.context
-    if context:is_composing() and context:get_option("hanbridge_translation") then
-        context:refresh_non_confirmed_composition()
-        return 1
+    if not key:release()
+        and pinyin_translate_keys[representation]
+        and (context:is_composing() or context:has_menu()) then
+        if context:get_option("hanbridge_translation") and context.input ~= "" then
+            _G.hanbridge_manual_target = nil
+            _G.hanbridge_pinyin_target = context.input
+            context:refresh_non_confirmed_composition()
+            return 1
+        end
+    end
+
+    if representation == "F24" then
+        if context:is_composing() and context:get_option("hanbridge_translation") then
+            context:refresh_non_confirmed_composition()
+            return 1
+        end
     end
 
     return 2

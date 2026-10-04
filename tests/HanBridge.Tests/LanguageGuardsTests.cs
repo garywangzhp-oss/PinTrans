@@ -22,6 +22,18 @@ public sealed class LanguageGuardsTests
         Assert.Equal(expected, actual);
     }
 
+    [Theory]
+    [InlineData("yiqiehuan", true)]
+    [InlineData("yi'qie huan", true)]
+    [InlineData("a", false)]
+    [InlineData("https://example.com", false)]
+    [InlineData("sk-abcdefghijklmnopqrstuvwxyz", false)]
+    public void ShouldTranslatePinyin_AppliesSafetyRules(string text, bool expected)
+    {
+        var actual = LanguageGuards.ShouldTranslatePinyin(text, 200, out _);
+        Assert.Equal(expected, actual);
+    }
+
     [Fact]
     public void ShouldTranslate_RejectsTextAboveLimit()
     {

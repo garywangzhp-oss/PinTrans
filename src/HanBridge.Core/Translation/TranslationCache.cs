@@ -23,9 +23,9 @@ public sealed class TranslationCache
         Initialize();
     }
 
-    public static string CreateKey(string sourceText, string providerId, string model, string promptVersion)
+    public static string CreateKey(string sourceText, string providerId, string model, string promptVersion, string mode = TranslationModes.Chinese)
     {
-        var material = $"{sourceText}\n{providerId}\n{model}\n{promptVersion}";
+        var material = $"{mode}\n{sourceText}\n{providerId}\n{model}\n{promptVersion}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(material));
         return Convert.ToHexString(hash);
     }

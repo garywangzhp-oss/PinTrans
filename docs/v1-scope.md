@@ -12,7 +12,9 @@
 
 - Chinese remains candidate 1.
 - Translation appears as candidate 2 with an `EN` label and `译首选` comment.
-- Only the current top Chinese candidate is translated.
+- The current top Chinese candidate is translated automatically.
+- `Ctrl+Alt+Enter` translates the currently highlighted Chinese candidate.
+- `Ctrl+Alt+P` translates the raw pinyin with model inference when Rime does not generate the desired Chinese phrase.
 - Selecting the English candidate commits it directly using the current Rime composition span.
 - English candidates must not enter the Rime user dictionary or influence Chinese frequency learning.
 - Translation starts after a 250 ms pause, only when the composition contains at least two Han characters.

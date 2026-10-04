@@ -10,6 +10,9 @@ public sealed class TranslationRequest
     [JsonPropertyName("source_text")]
     public string SourceText { get; set; } = string.Empty;
 
+    [JsonPropertyName("mode")]
+    public string Mode { get; set; } = "chinese";
+
     [JsonPropertyName("created_utc")]
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -24,6 +27,9 @@ public sealed class TranslationResponse
 
     [JsonPropertyName("translation")]
     public string Translation { get; set; } = string.Empty;
+
+    [JsonPropertyName("mode")]
+    public string Mode { get; set; } = "chinese";
 
     [JsonPropertyName("status")]
     public string Status { get; set; } = "error";

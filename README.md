@@ -64,6 +64,11 @@ Presets:
 
 Use `Ctrl+Alt+E` to toggle translation on or off. When translation is off, the Lua plugin performs no model requests.
 
+Additional shortcuts:
+
+- `Ctrl+Alt+Enter` translates the currently highlighted Chinese candidate.
+- `Ctrl+Alt+P` asks the model to infer the intended Chinese meaning from the raw pinyin and translate it to English. This is the fallback when Rime does not generate the desired Chinese phrase.
+
 ## Uninstall
 
 ```powershell

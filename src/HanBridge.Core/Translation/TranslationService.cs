@@ -32,9 +32,10 @@ public sealed class TranslationService
         _client = client;
     }
 
-    public async Task<TranslationOutcome> TranslateAsync(string sourceText, CancellationToken cancellationToken)
+    public async Task<TranslationOutcome> TranslateAsync(string sourceText, CancellationToken cancellationToken, string mode = TranslationModes.Chinese)
     {
         var started = Stopwatch.StartNew();
+        mode = string.IsNullOrWhiteSpace(mode) ? TranslationModes.Chinese : mode.Trim().ToLowerInvariant();
         var settings = _settingsStore.Current;
 
         if (!settings.TranslationEnabled)
@@ -52,7 +53,11 @@ public sealed class TranslationService
             return Outcome("skipped", "password-field", started, false);
         }
 
-        if (!LanguageGuards.ShouldTranslate(sourceText, settings.MaxSourceHanCharacters, out var guardReason))
+        var isPinyinMode = mode.Equals(TranslationModes.Pinyin, StringComparison.OrdinalIgnoreCase);
+        var guardPassed = isPinyinMode
+            ? LanguageGuards.ShouldTranslatePinyin(sourceText, settings.MaxSourceHanCharacters * 2, out var guardReason)
+            : LanguageGuards.ShouldTranslate(sourceText, settings.MaxSourceHanCharacters, out guardReason);
+        if (!guardPassed)
         {
             return Outcome("skipped", guardReason, started, false);
         }
@@ -74,7 +79,8 @@ public sealed class TranslationService
             sourceText,
             provider.Id,
             provider.Model,
-            OpenAiCompatibleClient.CurrentPromptVersion);
+            OpenAiCompatibleClient.CurrentPromptVersion,
+            mode);
 
         try
         {
@@ -95,7 +101,7 @@ public sealed class TranslationService
             return Outcome("error", "rate_limited", started, false);
         }
 
-        var completion = await _client.CompleteAsync(provider, apiKey, sourceText, settings, cancellationToken);
+        var completion = await _client.CompleteAsync(provider, apiKey, sourceText, settings, cancellationToken, mode);
         if (!completion.IsSuccess || string.IsNullOrWhiteSpace(completion.Content))
         {
             RegisterFailure(completion.ErrorCode ?? "request_failed");

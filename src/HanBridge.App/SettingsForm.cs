@@ -110,7 +110,7 @@ internal sealed class SettingsForm : Form
         {
             AutoSize = true,
             MaximumSize = new Size(660, 0),
-            Text = "全局快捷键：Ctrl+Alt+E 切换翻译开启/关闭。"
+            Text = "全局快捷键：Ctrl+Alt+E 切换翻译；Ctrl+Alt+Enter 翻译高亮候选；Ctrl+Alt+P 按拼音推断翻译。"
         });
         panel.Controls.Add(new Label
         {

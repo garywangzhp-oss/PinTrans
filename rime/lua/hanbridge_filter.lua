@@ -1,6 +1,6 @@
 -- HanBridge candidate filter.
--- Writes the current top Chinese candidate to the C# bridge and injects a
--- translated candidate as candidate 2 when a matching response is available.
+-- Automatic mode translates the selected/first Chinese candidate.
+-- Ctrl+Alt+P asks the model to infer and translate the raw pinyin.
 
 local local_app_data = os.getenv("LOCALAPPDATA")
 if not local_app_data then
@@ -16,7 +16,7 @@ local request_file = ipc_dir .. "\\request.json"
 local request_tmp = request_file .. ".tmp"
 local response_file = ipc_dir .. "\\response.txt"
 
-local last_requested_text = nil
+local last_requested_key = nil
 local debug_marker = (os.getenv("TEMP") or ".") .. "\\hanbridge-debug.on"
 local debug_log_path = (os.getenv("TEMP") or ".") .. "\\hanbridge_debug.log"
 
@@ -35,17 +35,11 @@ local function debug_log(message)
 end
 
 local function count_han(text)
-    -- LuaJIT compatibility: avoid the Lua 5.3 utf8 library. Count the
-    -- three-byte UTF-8 ranges that contain the common CJK characters.
     local count = 0
     for _ in text:gmatch("[\228-\233][\128-\191][\128-\191]") do
         count = count + 1
     end
     return count
-end
-
-local function has_han(text)
-    return count_han(text) > 0
 end
 
 local function has_disallowed_shape(text)
@@ -91,11 +85,12 @@ local function make_request_id()
     return string.format("%d-%06d", os.time(), clock_part)
 end
 
-local function write_request(text)
+local function write_request(text, mode)
     local request_json = string.format(
-        '{"request_id":%s,"source_text":%s}',
+        '{"request_id":%s,"source_text":%s,"mode":%s}',
         json_escape(make_request_id()),
-        json_escape(text))
+        json_escape(text),
+        json_escape(mode))
 
     local file = io.open(request_tmp, "wb")
     if not file then
@@ -133,65 +128,121 @@ local function read_response()
     return values
 end
 
+local function is_english_candidate(candidate)
+    return candidate and candidate.type == "hanbridge_en"
+end
+
+local function clear_task_state()
+    last_requested_key = nil
+    _G.hanbridge_manual_target = nil
+    _G.hanbridge_pinyin_target = nil
+end
+
 local function filter(input, env)
     local context = env.engine.context
     if not context:get_option("hanbridge_translation") then
-        last_requested_text = nil
+        clear_task_state()
         for cand in input:iter() do
             yield(cand)
         end
         return
     end
 
+    local selected = context:get_selected_candidate()
+    local manual_target = _G.hanbridge_manual_target
+    local pinyin_target = _G.hanbridge_pinyin_target
+    if (selected and is_english_candidate(selected)) and not pinyin_target then
+        manual_target = nil
+        _G.hanbridge_manual_target = nil
+    end
+
+    local mode = pinyin_target and "pinyin" or "chinese"
     local first = true
+    local source = nil
+    local translated = nil
+
     for cand in input:iter() do
-        local translated = nil
+        local is_first = first
+        first = false
 
-        if first then
-            first = false
-            local source = cand.text or ""
-            local han_count = count_han(source)
+        if is_first then
+            source = pinyin_target or manual_target or cand.text or ""
+            local translatable = false
+            if mode == "pinyin" then
+                translatable = string.len(source) >= 2 and not has_disallowed_shape(source)
+            else
+                translatable = count_han(source) >= 2 and not has_disallowed_shape(source)
+            end
 
-            if han_count >= 2 and not has_disallowed_shape(source) then
-                if source ~= last_requested_text then
-                    if write_request(source) then
-                        last_requested_text = source
+            if translatable then
+                local request_key = mode .. "\n" .. source
+                if request_key ~= last_requested_key then
+                    if write_request(source, mode) then
+                        last_requested_key = request_key
                     end
                 end
 
                 local response = read_response()
                 if response then
                     debug_log(string.format(
-                        "response status=%s source_len=%d candidate_len=%d match=%s translation_len=%d",
+                        "response status=%s mode=%s source_len=%d candidate_len=%d match=%s translation_len=%d",
                         tostring(response.status),
+                        tostring(response.mode),
                         string.len(response.source or ""),
                         string.len(source),
                         tostring(response.source == source),
                         string.len(response.translation or "")))
                 end
+
                 if response
                     and response.status == "ok"
+                    and response.mode == mode
                     and response.source == source
                     and response.translation
                     and response.translation ~= ""
                     and response.translation ~= source then
                     translated = response.translation
-                    debug_log(string.format("yield_translation start=%d end=%d", cand.start, cand._end))
+                    debug_log(string.format("yield_translation mode=%s start=%d end=%d", mode, cand.start, cand._end))
                 elseif response then
                     debug_log("discard_translation")
+                end
+
+                if response and response.mode == mode then
+                    if mode == "pinyin" then
+                        _G.hanbridge_pinyin_target = nil
+                    elseif manual_target then
+                        _G.hanbridge_manual_target = nil
+                    end
                 end
             end
         end
 
         yield(cand)
 
-        if translated then
+        local is_target = false
+        local full_span = false
+        local candidate_comment = " EN · 首选"
+
+        if mode == "pinyin" then
+            is_target = is_first
+            full_span = true
+            candidate_comment = " EN · 拼音"
+        elseif manual_target then
+            is_target = selected and not is_english_candidate(selected) and cand.text == selected.text
+            full_span = true
+            candidate_comment = " EN · 选中"
+        else
+            is_target = is_first
+        end
+
+        if translated and is_target then
+            local candidate_end = full_span and string.len(context.input) or cand._end
             yield(Candidate(
                 "hanbridge_en",
                 cand.start,
-                cand._end,
+                candidate_end,
                 translated,
-                " EN · 译首选"))
+                candidate_comment))
         end
     end
 end

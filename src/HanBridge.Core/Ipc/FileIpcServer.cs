@@ -133,7 +133,7 @@ public sealed class FileIpcServer
             await Task.Delay(250, cancellationToken);
             Publish("translating", null);
 
-            var outcome = await _translationService.TranslateAsync(request.SourceText, cancellationToken);
+            var outcome = await _translationService.TranslateAsync(request.SourceText, cancellationToken, request.Mode);
             if (cancellationToken.IsCancellationRequested || !IsActiveRequest(request.RequestId))
             {
                 return;
@@ -198,6 +198,7 @@ public sealed class FileIpcServer
         builder.AppendLine("v1");
         builder.Append("request_id=").AppendLine(OneLine(request.RequestId));
         builder.Append("status=").AppendLine(OneLine(outcome.Status));
+        builder.Append("mode=").AppendLine(OneLine(request.Mode));
         builder.Append("source=").AppendLine(OneLine(request.SourceText));
         builder.Append("translation=").AppendLine(OneLine(outcome.Translation));
         builder.Append("error=").AppendLine(OneLine(outcome.ErrorCode));

@@ -80,6 +80,39 @@ public sealed class TranslationServiceTests
         }
     }
 
+    [Fact]
+    public async Task TranslationService_AcceptsPinyinFallbackMode()
+    {
+        using var temp = new TemporaryDirectory();
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var payload = """
+                      {"choices":[{"message":{"content":"{\"translation\":\"Switched\"}"}}]}
+                      """;
+        var serverTask = RunSingleResponseAsync(listener, "200 OK", payload);
+
+        try
+        {
+            var service = CreateService(
+                temp.Path,
+                $"http://127.0.0.1:{port}/v1/chat/completions",
+                ProviderPresets.OpenCodeGoId);
+            var outcome = await service.TranslateAsync(
+                "yiqiehuan",
+                CancellationToken.None,
+                TranslationModes.Pinyin);
+
+            Assert.True(outcome.Status == "ok", $"status={outcome.Status}, error={outcome.ErrorCode}");
+            Assert.Equal("Switched", outcome.Translation);
+            await serverTask;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
     private static TranslationService CreateService(
         string root,
         string endpoint,
@@ -107,8 +140,29 @@ public sealed class TranslationServiceTests
         using var client = await listener.AcceptTcpClientAsync();
         await using var stream = client.GetStream();
         using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
-        while (await reader.ReadLineAsync() is { Length: > 0 })
+
+        var contentLength = 0;
+        while (await reader.ReadLineAsync() is { } line && line.Length > 0)
         {
+            if (line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase))
+            {
+                _ = int.TryParse(line["Content-Length:".Length..].Trim(), out contentLength);
+            }
+        }
+
+        if (contentLength > 0)
+        {
+            var requestBody = new char[contentLength];
+            var offset = 0;
+            while (offset < requestBody.Length)
+            {
+                var read = await reader.ReadAsync(requestBody.AsMemory(offset));
+                if (read == 0)
+                {
+                    break;
+                }
+                offset += read;
+            }
         }
 
         var body = Encoding.UTF8.GetBytes(responseBody);

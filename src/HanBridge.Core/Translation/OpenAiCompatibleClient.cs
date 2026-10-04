@@ -7,7 +7,7 @@ namespace HanBridge.Core.Translation;
 
 public sealed class OpenAiCompatibleClient
 {
-    private const string PromptVersion = "2026-10-04.2";
+    private const string PromptVersion = "2026-10-04.4";
 
     public static string CurrentPromptVersion => PromptVersion;
 
@@ -16,7 +16,8 @@ public sealed class OpenAiCompatibleClient
         string apiKey,
         string sourceText,
         AppSettings settings,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string mode = TranslationModes.Chinese)
     {
         if (string.IsNullOrWhiteSpace(provider.Endpoint))
         {
@@ -37,7 +38,7 @@ public sealed class OpenAiCompatibleClient
 
             try
             {
-                var completion = await SendOnceAsync(provider, apiKey, sourceText, settings, cancellationToken);
+                var completion = await SendOnceAsync(provider, apiKey, sourceText, settings, mode, cancellationToken);
                 if (completion.IsSuccess || !IsRetryable(completion.StatusCode))
                 {
                     return completion;
@@ -73,6 +74,7 @@ public sealed class OpenAiCompatibleClient
         string apiKey,
         string sourceText,
         AppSettings settings,
+        string mode,
         CancellationToken cancellationToken)
     {
         using var handler = CreateHandler(settings);
@@ -91,14 +93,7 @@ public sealed class OpenAiCompatibleClient
         }
 
         var openCodeMode = RequiresOpenCodeSession(provider);
-        var systemPrompt = openCodeMode
-            ? "You are a translation function. Translate Chinese into natural, concise, professional English. " +
-              "Preserve names, numbers, URLs, code, and existing English terms. " +
-              "Return only a JSON object with exactly one key: {\"translation\":\"...\"}. " +
-              "Do not add explanations, markdown, or any other keys."
-            : "Translate the user's Chinese text into natural, concise, professional English. " +
-              "Preserve names, numbers, URLs, code, and existing English terms. " +
-              "Return only the translation, with no explanation, quotes, markdown, or prefix.";
+        var systemPrompt = BuildSystemPrompt(openCodeMode, mode);
 
         var payload = new Dictionary<string, object?>
         {
@@ -203,6 +198,26 @@ public sealed class OpenAiCompatibleClient
     private static bool RequiresOpenCodeSession(ProviderSettings provider) =>
         provider.Id.Equals(ProviderPresets.OpenCodeGoId, StringComparison.OrdinalIgnoreCase)
         || provider.Endpoint.Contains("opencode.ai/zen/go/", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildSystemPrompt(bool openCodeMode, string mode)
+    {
+        var sourceDescription = mode.Equals(TranslationModes.Pinyin, StringComparison.OrdinalIgnoreCase)
+            ? "The user provides Hanyu Pinyin without tones. Infer the intended Chinese sentence internally, " +
+              "preferring completed-state meanings used in software status messages. When pinyin starts with yi " +
+              "followed by a verb phrase, infer 已 + verb unless context clearly means 一. The translation must " +
+              "be natural, concise, professional English and must never contain Chinese characters. "
+            : "Translate the user's Chinese text into natural, concise, professional English. ";
+
+        var sharedRules =
+            "Preserve names, numbers, URLs, code, and existing English terms. ";
+
+        return openCodeMode
+            ? "You are a translation function. " + sourceDescription + sharedRules +
+              "Return only a JSON object with exactly one key: {\"translation\":\"...\"}. " +
+              "Do not add explanations, markdown, or any other keys."
+            : sourceDescription + sharedRules +
+              "Return only the translation, with no explanation, quotes, markdown, or prefix.";
+    }
 
     private static string? ExtractTranslation(string content, bool openCodeMode)
     {

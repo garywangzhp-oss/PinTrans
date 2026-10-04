@@ -17,6 +17,9 @@ public static partial class LanguageGuards
     [GeneratedRegex(@"(?i)(?:^|\s)(?:git|npm|pnpm|yarn|dotnet|curl|wget|sudo|ssh|docker|kubectl)\s+\S+")]
     private static partial Regex CommandRegex();
 
+    [GeneratedRegex(@"^[A-Za-z0-9' ]+$")]
+    private static partial Regex PinyinRegex();
+
     [GeneratedRegex(@"(?:[{};]|=>|->|::|</?[A-Za-z][^>]*>)")]
     private static partial Regex CodeRegex();
 
@@ -84,6 +87,67 @@ public static partial class LanguageGuards
         if (CodeRegex().IsMatch(trimmed))
         {
             reason = "code-like";
+            return false;
+        }
+
+        if (SecretRegex().IsMatch(trimmed))
+        {
+            reason = "secret-like";
+            return false;
+        }
+
+        reason = "ok";
+        return true;
+    }
+
+    public static bool ShouldTranslatePinyin(string text, int maximumCharacters, out string reason)
+    {
+        var trimmed = text.Trim();
+        if (trimmed.Length == 0)
+        {
+            reason = "empty";
+            return false;
+        }
+
+        if (trimmed.Length > maximumCharacters)
+        {
+            reason = "source-too-long";
+            return false;
+        }
+
+        if (!PinyinRegex().IsMatch(trimmed))
+        {
+            reason = "not-pinyin";
+            return false;
+        }
+
+        if (trimmed.Count(char.IsLetter) < 2)
+        {
+            reason = "too-short";
+            return false;
+        }
+
+        if (EmailRegex().IsMatch(trimmed))
+        {
+            reason = "email";
+            return false;
+        }
+
+        if (UrlRegex().IsMatch(trimmed))
+        {
+            reason = "url";
+            return false;
+        }
+
+        if (FilePathRegex().IsMatch(trimmed))
+        {
+            reason = "file-path";
+            return false;
+        }
+
+        if (CommandRegex().IsMatch(trimmed))
+        {
+            reason = "command";
             return false;
         }
 
