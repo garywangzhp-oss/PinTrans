@@ -22,5 +22,5 @@ Run each row after installing HanBridge with a configured provider.
 | SAFE-02 | Translation off | Type and wait | No model request; Chinese input remains responsive | Pass |
 | PERF-01 | Any text editor | Type continuously for 10 minutes | No input lag or candidate flicker | Pending |
 | PERF-02 | Any text editor | Leave HanBridge running for 8 hours | No crash and no sustained memory growth | Pending |
-| FAIL-01 | Any app | Disconnect network, type Chinese | Chinese input remains responsive; translation candidate is absent | Pending |
-| FAIL-02 | Any app | Use an invalid API key | Chinese input remains responsive; tray shows configuration error | Pending |
+| FAIL-01 | Any app | Disconnect network, type Chinese | Chinese input remains responsive; translation candidate is absent | Pass (automated) |
+| FAIL-02 | Any app | Use an invalid API key | Chinese input remains responsive; tray shows configuration error | Pass (automated) |
