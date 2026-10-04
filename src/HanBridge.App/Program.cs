@@ -18,7 +18,7 @@ internal static class Program
         using var mutex = new Mutex(true, "HanBridge.Singleton", out var createdNew);
         if (!createdNew)
         {
-            MessageBox.Show("HanBridge is already running.", "HanBridge", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("PinTrans is already running.", "PinTrans", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 

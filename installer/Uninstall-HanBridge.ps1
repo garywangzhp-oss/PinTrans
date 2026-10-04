@@ -104,4 +104,4 @@ if (-not $NoDeploy) {
     }
 }
 
-Write-Host "HanBridge uninstalled. User Rime data was preserved unless removal switches were supplied." -ForegroundColor Green
+Write-Host "PinTrans uninstalled. User Rime data was preserved unless removal switches were supplied." -ForegroundColor Green

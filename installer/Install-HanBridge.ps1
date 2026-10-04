@@ -204,5 +204,5 @@ if (-not $SkipStart) {
     Start-Process -FilePath (Join-Path $AppInstallDir "HanBridge.exe") -WindowStyle Hidden | Out-Null
 }
 Write-Host ""
-Write-Host "HanBridge installed." -ForegroundColor Green
+Write-Host "PinTrans installed." -ForegroundColor Green
 Write-Host "Open the tray icon to configure DeepSeek or OpenCode Go."

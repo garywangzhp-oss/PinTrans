@@ -63,7 +63,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _notifyIcon = new NotifyIcon
         {
             Icon = _icon,
-            Text = "HanBridge",
+            Text = "PinTrans",
             Visible = true,
             ContextMenuStrip = menu
         };
@@ -129,7 +129,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             _notifyIcon.ShowBalloonTip(
                 1500,
-                "HanBridge",
+                "PinTrans",
                 enabled ? "翻译已开启" : "翻译已关闭",
                 ToolTipIcon.Info);
         }
@@ -194,7 +194,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         };
 
         _statusItem.Text = $"状态：{label}";
-        _notifyIcon.Text = $"HanBridge · {label}";
+        _notifyIcon.Text = $"PinTrans · {label}";
         _toggleTranslationItem.Checked = _settingsStore.Current.TranslationEnabled;
         _toggleTranslationItem.Text = _toggleTranslationItem.Checked ? "翻译已开启" : "翻译已关闭";
     }

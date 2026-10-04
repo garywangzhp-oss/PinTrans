@@ -1,4 +1,4 @@
-# HanBridge installer
+# PinTrans installer
 
 ## Build
 

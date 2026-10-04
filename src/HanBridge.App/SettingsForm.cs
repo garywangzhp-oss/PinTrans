@@ -41,7 +41,7 @@ internal sealed class SettingsForm : Form
         _secretStore = secretStore;
         _cache = cache;
 
-        Text = "HanBridge 设置";
+        Text = "PinTrans 设置";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(720, 520);
         Size = new Size(760, 560);
@@ -131,7 +131,7 @@ internal sealed class SettingsForm : Form
         {
             await _cache.ClearAsync(CancellationToken.None);
             await RefreshCacheSizeAsync();
-            MessageBox.Show(this, "翻译缓存已清空。", "HanBridge", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, "翻译缓存已清空。", "PinTrans", MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
         _openDataFolderButton.Click += (_, _) => Process.Start(new ProcessStartInfo { FileName = _paths.Root, UseShellExecute = true });
         panel.Controls.Add(_clearCacheButton);
@@ -230,7 +230,7 @@ internal sealed class SettingsForm : Form
         var apiKey = _secretStore.GetSecret(provider.Id);
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            MessageBox.Show(this, "请先填写 API Key。", "HanBridge", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, "请先填写 API Key。", "PinTrans", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 

@@ -1,4 +1,4 @@
-# Architecture
+# PinTrans architecture
 
 ```text
 Rime / Weasel candidate pipeline

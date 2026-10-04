@@ -1,4 +1,4 @@
-# HanBridge V1 frozen scope
+# PinTrans V1 frozen scope
 
 ## Product
 
