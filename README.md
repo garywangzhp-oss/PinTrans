@@ -59,6 +59,7 @@ Presets:
 
 - DeepSeek: `https://api.deepseek.com/chat/completions`, model `deepseek-flash`
 - OpenCode Go: `https://opencode.ai/zen/go/v1/chat/completions`, model `deepseek-v4.1-flash`
+- OpenCode Go model presets include `glm-5.3-flash`, `mimo-v2.6-flash`, `kimi-k3`, and `longcat-2.0`
 - Custom: any OpenAI-compatible Chat Completions endpoint
 
 Use `Ctrl+Alt+E` to toggle translation on or off. When translation is off, the Lua plugin performs no model requests.

@@ -47,6 +47,11 @@ public sealed class TranslationService
             return Outcome("error", "temporarily_paused", started, false);
         }
 
+        if (HostFieldGuard.IsPasswordFieldFocused())
+        {
+            return Outcome("skipped", "password-field", started, false);
+        }
+
         if (!LanguageGuards.ShouldTranslate(sourceText, settings.MaxSourceHanCharacters, out var guardReason))
         {
             return Outcome("skipped", guardReason, started, false);
