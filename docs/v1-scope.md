@@ -61,7 +61,7 @@ Requests are non-streaming, have an 8 second timeout, and retry transient errors
 - Always-running WinForms tray application.
 - HKCU Run autostart.
 - PowerShell installer and uninstaller.
-- Private Git repository, MIT for HanBridge-owned code.
+- Public Git repository, MIT for PinTrans-owned code.
 - Weasel 0.17.x and a pinned rime-ice revision.
 - Lua filter plus F24 refresh. File IPC uses atomic temporary-file rename.
 

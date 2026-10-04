@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build PinTrans
+        shell: pwsh
+        run: .\installer\Build-PinTrans.ps1
+      - name: Stage release package
+        shell: pwsh
+        run: |
+          $stage = Join-Path $PWD "release\PinTrans-win-x64"
+          New-Item -ItemType Directory -Force -Path (Join-Path $stage "installer"), (Join-Path $stage "rime\lua") | Out-Null
+          Copy-Item ".\artifacts\publish\win-x64\PinTrans.exe" $stage -Force
+          Copy-Item ".\README.md", ".\LICENSE", ".\THIRD_PARTY_NOTICES.md" $stage -Force
+          Copy-Item ".\installer\Quick-Install.ps1", ".\installer\Install-PinTrans.ps1", ".\installer\Uninstall-PinTrans.ps1" (Join-Path $stage "installer") -Force
+          Copy-Item ".\rime\lua\*" (Join-Path $stage "rime\lua") -Force
+          Compress-Archive -Path (Join-Path $stage "*") -DestinationPath ".\release\PinTrans-win-x64.zip" -Force
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PinTrans-win-x64
+          path: release\PinTrans-win-x64.zip
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create $env:GITHUB_REF_NAME --title "PinTrans $env:GITHUB_REF_NAME" --notes "Windows x64 release. Download PinTrans-win-x64.zip, extract it, then run installer\Quick-Install.ps1." ".\release\PinTrans-win-x64.zip"

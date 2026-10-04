@@ -13,7 +13,7 @@ Rime / Weasel candidate pipeline
   └─ hanbridge_refresh.lua
        └─ handles F24 and refreshes the composition
 
-HanBridge.exe
+PinTrans.exe
   ├─ polls %LOCALAPPDATA%\HanBridge\ipc\request.json
   ├─ debounces for 250 ms and cancels superseded requests
   ├─ validates language and safety guards

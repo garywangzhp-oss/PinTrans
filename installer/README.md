@@ -1,25 +1,35 @@
 # PinTrans installer
 
+## User installation
+
+Release users should run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\installer\Quick-Install.ps1
+```
+
+The script installs Weasel and rime-ice when missing, installs or builds PinTrans, deploys the Lua plugin, and starts the tray app.
+
 ## Build
 
 ```powershell
-.\installer\Build-HanBridge.ps1
+.\installer\Build-PinTrans.ps1
 ```
 
-## Install
+## Install an existing build
 
 ```powershell
-.\installer\Install-HanBridge.ps1
+.\installer\Install-PinTrans.ps1
 ```
-
-The installer expects Weasel 0.17.x and rime-ice to be installed already. It backs up `rime_ice.custom.yaml`, inserts a managed patch block, copies the Lua plugin, publishes the tray app to `%LOCALAPPDATA%\HanBridge\app`, and registers HKCU autostart.
-
-If `rime_ice.custom.yaml` already has one of the managed keys, installation stops instead of overwriting user configuration.
 
 ## Uninstall
 
 ```powershell
-.\installer\Uninstall-HanBridge.ps1
+.\installer\Uninstall-PinTrans.ps1
 ```
 
-User data is preserved by default. Add `-RemoveApiKeys`, `-RemoveCache`, or `-RemoveAllData` to remove selected data.
+The old `Build-HanBridge.ps1`, `Install-HanBridge.ps1`, and `Uninstall-HanBridge.ps1` names remain as compatibility wrappers.
+
+## Configuration merge
+
+The installer backs up `rime_ice.custom.yaml` and inserts a managed patch block. If a conflicting key already exists, installation stops instead of overwriting user configuration.

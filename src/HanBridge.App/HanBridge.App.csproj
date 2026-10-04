@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyName>HanBridge</AssemblyName>
+    <AssemblyName>PinTrans</AssemblyName>
     <AssemblyTitle>PinTrans</AssemblyTitle>
     <Product>PinTrans</Product>
     <Description>PinTrans bilingual AI input method</Description>
