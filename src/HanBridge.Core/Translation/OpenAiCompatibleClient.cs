@@ -90,12 +90,12 @@ public sealed class OpenAiCompatibleClient
             request.Headers.TryAddWithoutValidation("x-opencode-session", settings.OpenCodeSessionId);
         }
 
-        var payload = new
+        var payload = new Dictionary<string, object?>
         {
-            model = provider.Model,
-            temperature = 0.2,
-            max_tokens = 512,
-            messages = new object[]
+            ["model"] = provider.Model,
+            ["temperature"] = 0.2,
+            ["max_tokens"] = 512,
+            ["messages"] = new object[]
             {
                 new
                 {
@@ -112,6 +112,11 @@ public sealed class OpenAiCompatibleClient
                 }
             }
         };
+
+        if (RequiresOpenCodeSession(provider))
+        {
+            payload["reasoning_effort"] = "none";
+        }
 
         request.Content = new StringContent(
             JsonSerializer.Serialize(payload),
