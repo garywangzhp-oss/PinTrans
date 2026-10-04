@@ -94,7 +94,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         SetStatus(new BridgeStatus(settings.TranslationEnabled ? "idle" : "disabled", null));
     }
 
-    private void ShowSettings()
+    internal void ShowSettings()
     {
         if (_settingsForm is { IsDisposed: false })
         {

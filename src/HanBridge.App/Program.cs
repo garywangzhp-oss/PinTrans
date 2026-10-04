@@ -10,7 +10,7 @@ namespace HanBridge.App;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
@@ -41,6 +41,11 @@ internal static class Program
         };
 
         using var tray = new TrayApplicationContext(paths, settingsStore, secretStore, cache, ipcServer, logger);
+        if (args.Any(argument => argument.Equals("--settings", StringComparison.OrdinalIgnoreCase)))
+        {
+            tray.ShowSettings();
+        }
+
         Application.Run(tray);
     }
 }
