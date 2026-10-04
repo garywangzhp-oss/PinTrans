@@ -81,10 +81,9 @@ function Get-ManagedBlock {
         '    - name: hanbridge_translation',
         '      reset: 1',
         '      states: [ 翻译关, 翻译开 ]',
-        '  "key_binder/bindings/+":',
-        '    - { when: always, accept: Control+Alt+E, toggle: hanbridge_translation }',
+
         '  "engine/processors/@before 0": lua_processor@*hanbridge_refresh',
-        '  "engine/filters/@before last": lua_filter@*hanbridge_filter',
+        '  "engine/filters/@after last": lua_filter@*hanbridge_filter',
         $ManagedEnd
     )
 }
@@ -107,9 +106,9 @@ function Test-ConflictingKeys {
 
     $patterns = @(
         '^\s*"switches/\+"\s*:',
-        '^\s*"key_binder/bindings/\+"\s*:',
+
         '^\s*"engine/processors/@before 0"\s*:',
-        '^\s*"engine/filters/@before last"\s*:'
+        '^\s*"engine/filters/@after last"\s*:'
     )
 
     foreach ($line in $Lines) {

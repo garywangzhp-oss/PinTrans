@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using HanBridge.Core;
 using HanBridge.Core.Ipc;
 using HanBridge.Core.Logging;
@@ -21,6 +22,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _toggleTranslationItem;
     private readonly ToolStripMenuItem _statusItem;
     private readonly Icon _icon;
+    private readonly HotKeyWindow _hotKeyWindow;
+    private bool _hotKeyRegistered;
 
     private SettingsForm? _settingsForm;
 
@@ -66,6 +69,18 @@ internal sealed class TrayApplicationContext : ApplicationContext
         };
         _notifyIcon.DoubleClick += (_, _) => ShowSettings();
 
+        _hotKeyWindow = new HotKeyWindow();
+        _hotKeyWindow.HotKeyPressed += ToggleTranslationFromHotKey;
+        _hotKeyRegistered = NativeMethods.RegisterHotKey(
+            _hotKeyWindow.Handle,
+            NativeMethods.HotKeyId,
+            NativeMethods.ModControl | NativeMethods.ModAlt | NativeMethods.ModNoRepeat,
+            NativeMethods.KeyE);
+        if (!_hotKeyRegistered)
+        {
+            _logger.Warn("global-hotkey-registration-failed key=Control+Alt+E");
+        }
+
         _ipcServer.StatusChanged += OnBridgeStatusChanged;
         _ = _ipcServer.RunAsync(_shutdown.Token);
     }
@@ -76,6 +91,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             _shutdown.Cancel();
             _ipcServer.CancelActiveRequest();
+            if (_hotKeyRegistered)
+            {
+                NativeMethods.UnregisterHotKey(_hotKeyWindow.Handle, NativeMethods.HotKeyId);
+            }
+
+            _hotKeyWindow.DestroyHandle();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
             _shutdown.Dispose();
@@ -87,11 +108,31 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private void ToggleTranslation()
     {
+        ApplyTranslationEnabled(_toggleTranslationItem.Checked, showNotification: true);
+    }
+
+    private void ToggleTranslationFromHotKey()
+    {
+        ApplyTranslationEnabled(!_settingsStore.Current.TranslationEnabled, showNotification: true);
+    }
+
+    private void ApplyTranslationEnabled(bool enabled, bool showNotification)
+    {
         var settings = _settingsStore.Current;
-        settings.TranslationEnabled = _toggleTranslationItem.Checked;
+        settings.TranslationEnabled = enabled;
         _settingsStore.Save(settings);
-        _toggleTranslationItem.Text = settings.TranslationEnabled ? "翻译已开启" : "翻译已关闭";
-        SetStatus(new BridgeStatus(settings.TranslationEnabled ? "idle" : "disabled", null));
+        _toggleTranslationItem.Checked = enabled;
+        _toggleTranslationItem.Text = enabled ? "翻译已开启" : "翻译已关闭";
+        SetStatus(new BridgeStatus(enabled ? "idle" : "disabled", null));
+
+        if (showNotification)
+        {
+            _notifyIcon.ShowBalloonTip(
+                1500,
+                "HanBridge",
+                enabled ? "翻译已开启" : "翻译已关闭",
+                ToolTipIcon.Info);
+        }
     }
 
     internal void ShowSettings()
@@ -156,5 +197,44 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _notifyIcon.Text = $"HanBridge · {label}";
         _toggleTranslationItem.Checked = _settingsStore.Current.TranslationEnabled;
         _toggleTranslationItem.Text = _toggleTranslationItem.Checked ? "翻译已开启" : "翻译已关闭";
+    }
+
+    private sealed class HotKeyWindow : NativeWindow
+    {
+        public event Action? HotKeyPressed;
+
+        public HotKeyWindow()
+        {
+            CreateHandle(new CreateParams());
+        }
+
+        protected override void WndProc(ref Message message)
+        {
+            if (message.Msg == NativeMethods.WmHotKey)
+            {
+                HotKeyPressed?.Invoke();
+                return;
+            }
+
+            base.WndProc(ref message);
+        }
+    }
+
+    private static class NativeMethods
+    {
+        public const int HotKeyId = 0x4842;
+        public const int WmHotKey = 0x0312;
+        public const uint ModAlt = 0x0001;
+        public const uint ModControl = 0x0002;
+        public const uint ModNoRepeat = 0x4000;
+        public const uint KeyE = 0x45;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool RegisterHotKey(IntPtr windowHandle, int id, uint modifiers, uint virtualKey);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool UnregisterHotKey(IntPtr windowHandle, int id);
     }
 }

@@ -17,6 +17,22 @@ local request_tmp = request_file .. ".tmp"
 local response_file = ipc_dir .. "\\response.txt"
 
 local last_requested_text = nil
+local debug_marker = (os.getenv("TEMP") or ".") .. "\\hanbridge-debug.on"
+local debug_log_path = (os.getenv("TEMP") or ".") .. "\\hanbridge_debug.log"
+
+local function debug_log(message)
+    local marker = io.open(debug_marker, "rb")
+    if not marker then
+        return
+    end
+    marker:close()
+
+    local log = io.open(debug_log_path, "a")
+    if log then
+        log:write(os.date("%Y-%m-%d %H:%M:%S ") .. message .. "\n")
+        log:close()
+    end
+end
 
 local function count_han(text)
     -- LuaJIT compatibility: avoid the Lua 5.3 utf8 library. Count the
@@ -109,7 +125,7 @@ local function read_response()
     for line in file:lines() do
         local key, value = line:match("^([%w_]+)=(.*)$")
         if key then
-            values[key] = value
+            values[key] = value:gsub("\r$", "")
         end
     end
     file:close()
@@ -144,6 +160,15 @@ local function filter(input, env)
                 end
 
                 local response = read_response()
+                if response then
+                    debug_log(string.format(
+                        "response status=%s source_len=%d candidate_len=%d match=%s translation_len=%d",
+                        tostring(response.status),
+                        string.len(response.source or ""),
+                        string.len(source),
+                        tostring(response.source == source),
+                        string.len(response.translation or "")))
+                end
                 if response
                     and response.status == "ok"
                     and response.source == source
@@ -151,6 +176,9 @@ local function filter(input, env)
                     and response.translation ~= ""
                     and response.translation ~= source then
                     translated = response.translation
+                    debug_log(string.format("yield_translation start=%d end=%d", cand.start, cand._end))
+                elseif response then
+                    debug_log("discard_translation")
                 end
             end
         end
