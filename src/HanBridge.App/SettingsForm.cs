@@ -16,7 +16,7 @@ internal sealed class SettingsForm : Form
 
     private readonly ComboBox _providerCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
     private readonly TextBox _endpointText = new() { Width = 560 };
-    private readonly TextBox _modelText = new() { Width = 300 };
+    private readonly ComboBox _modelPresetCombo = new() { DropDownStyle = ComboBoxStyle.DropDown, Width = 300 };
     private readonly TextBox _apiKeyText = new() { Width = 420, UseSystemPasswordChar = true };
     private readonly ComboBox _proxyModeCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
     private readonly TextBox _proxyUrlText = new() { Width = 420 };
@@ -79,7 +79,7 @@ internal sealed class SettingsForm : Form
 
         AddRow(layout, 0, "服务商", _providerCombo);
         AddRow(layout, 1, "Endpoint", _endpointText);
-        AddRow(layout, 2, "模型", _modelText);
+        AddRow(layout, 2, "模型", _modelPresetCombo);
         AddRow(layout, 3, "API Key", _apiKeyText);
         AddRow(layout, 4, "代理模式", _proxyModeCombo);
         AddRow(layout, 5, "代理地址", _proxyUrlText);
@@ -180,14 +180,19 @@ internal sealed class SettingsForm : Form
     private void LoadProviderIntoControls(ProviderSettings provider)
     {
         _endpointText.Text = provider.Endpoint;
-        _modelText.Text = provider.Model;
+        _modelPresetCombo.Items.Clear();
+        foreach (var model in ProviderPresets.GetModelPresets(provider.Id))
+        {
+            _modelPresetCombo.Items.Add(model);
+        }
+        _modelPresetCombo.Text = provider.Model;
         _apiKeyText.Text = _secretStore.GetSecret(provider.Id) ?? string.Empty;
     }
 
     private void SaveProviderFromControls(ProviderSettings provider)
     {
         provider.Endpoint = _endpointText.Text.Trim();
-        provider.Model = _modelText.Text.Trim();
+        provider.Model = _modelPresetCombo.Text.Trim();
         _secretStore.SetSecret(provider.Id, _apiKeyText.Text);
     }
 

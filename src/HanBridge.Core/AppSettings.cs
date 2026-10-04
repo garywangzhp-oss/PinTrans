@@ -55,5 +55,31 @@ public static class ProviderPresets
         }
     ];
 
+    public static IReadOnlyList<string> GetModelPresets(string providerId)
+    {
+        if (providerId.Equals(OpenCodeGoId, StringComparison.OrdinalIgnoreCase))
+        {
+            return
+            [
+                "deepseek-v4.1-flash",
+                "glm-5.3-flash",
+                "mimo-v2.6-flash",
+                "kimi-k3",
+                "longcat-2.0"
+            ];
+        }
+
+        if (providerId.Equals(DeepSeekId, StringComparison.OrdinalIgnoreCase))
+        {
+            return
+            [
+                "deepseek-flash",
+                "deepseek-v4-pro"
+            ];
+        }
+
+        return [];
+    }
+
     public static AppSettings CreateDefault() => new();
 }

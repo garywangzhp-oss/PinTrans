@@ -17,6 +17,7 @@ public sealed class ProviderAndSettingsTests
         var openCode = Assert.Single(providers, provider => provider.Id == ProviderPresets.OpenCodeGoId);
         Assert.Equal("https://opencode.ai/zen/go/v1/chat/completions", openCode.Endpoint);
         Assert.Equal("deepseek-v4.1-flash", openCode.Model);
+        Assert.Contains("glm-5.3-flash", ProviderPresets.GetModelPresets(ProviderPresets.OpenCodeGoId));
     }
 
     [Fact]
