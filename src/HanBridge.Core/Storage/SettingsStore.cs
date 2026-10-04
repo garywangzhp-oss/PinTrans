@@ -83,5 +83,10 @@ public sealed class SettingsStore
         {
             settings.ActiveProviderId = ProviderPresets.DeepSeekId;
         }
+
+        if (string.IsNullOrWhiteSpace(settings.OpenCodeSessionId))
+        {
+            settings.OpenCodeSessionId = Guid.NewGuid().ToString("N");
+        }
     }
 }

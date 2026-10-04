@@ -28,6 +28,7 @@ public sealed class ProviderAndSettingsTests
 
         Assert.True(store.Current.TranslationEnabled);
         Assert.Equal(ProviderPresets.DeepSeekId, store.Current.ActiveProviderId);
+        Assert.False(string.IsNullOrWhiteSpace(store.Current.OpenCodeSessionId));
 
         store.Current.ActiveProviderId = ProviderPresets.OpenCodeGoId;
         store.Current.ProxyMode = "direct";

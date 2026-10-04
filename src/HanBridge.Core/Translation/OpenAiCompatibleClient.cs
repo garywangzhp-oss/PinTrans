@@ -85,6 +85,11 @@ public sealed class OpenAiCompatibleClient
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
+        if (RequiresOpenCodeSession(provider))
+        {
+            request.Headers.TryAddWithoutValidation("x-opencode-session", settings.OpenCodeSessionId);
+        }
+
         var payload = new
         {
             model = provider.Model,
@@ -122,7 +127,9 @@ public sealed class OpenAiCompatibleClient
 
         if (!response.IsSuccessStatusCode)
         {
-            return ProviderCompletion.Failure($"http_{statusCode}", statusCode);
+            var providerError = TryExtractProviderError(body);
+            var errorCode = providerError is null ? $"http_{statusCode}" : $"http_{statusCode}:{providerError}";
+            return ProviderCompletion.Failure(errorCode, statusCode);
         }
 
         try
@@ -173,6 +180,45 @@ public sealed class OpenAiCompatibleClient
 
     private static bool IsRetryable(int statusCode) =>
         statusCode == 429 || statusCode >= 500;
+
+    private static bool RequiresOpenCodeSession(ProviderSettings provider) =>
+        provider.Id.Equals(ProviderPresets.OpenCodeGoId, StringComparison.OrdinalIgnoreCase)
+        || provider.Endpoint.Contains("opencode.ai/zen/go/", StringComparison.OrdinalIgnoreCase);
+
+    private static string? TryExtractProviderError(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            if (!document.RootElement.TryGetProperty("error", out var error))
+            {
+                return null;
+            }
+
+            if (error.ValueKind == JsonValueKind.String)
+            {
+                return error.GetString();
+            }
+
+            if (error.ValueKind == JsonValueKind.Object
+                && error.TryGetProperty("type", out var type)
+                && type.ValueKind == JsonValueKind.String)
+            {
+                return type.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
+    }
 }
 
 public sealed record ProviderCompletion(bool IsSuccess, string? Content, string? ErrorCode, int StatusCode)

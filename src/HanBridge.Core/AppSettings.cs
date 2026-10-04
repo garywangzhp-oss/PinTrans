@@ -10,6 +10,7 @@ public sealed class AppSettings
     public int MaxSourceHanCharacters { get; set; } = 200;
     public string ProxyMode { get; set; } = "system";
     public string? ProxyUrl { get; set; }
+    public string OpenCodeSessionId { get; set; } = Guid.NewGuid().ToString("N");
     public List<ProviderSettings> Providers { get; set; } = ProviderPresets.CreateDefaults();
 }
 
