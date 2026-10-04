@@ -50,13 +50,47 @@ public sealed class TranslationServiceTests
         }
     }
 
-    private static TranslationService CreateService(string root, string endpoint)
+    [Fact]
+    public async Task TranslationService_ExtractsJsonTranslationForOpenCode()
+    {
+        using var temp = new TemporaryDirectory();
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var payload = """
+                      {"choices":[{"message":{"content":"{\"translation\":\"Hello, world\"}"}}]}
+                      """;
+        var serverTask = RunSingleResponseAsync(listener, "200 OK", payload);
+
+        try
+        {
+            var service = CreateService(
+                temp.Path,
+                $"http://127.0.0.1:{port}/v1/chat/completions",
+                ProviderPresets.OpenCodeGoId);
+            var outcome = await service.TranslateAsync("你好，世界", CancellationToken.None);
+
+            Assert.Equal("ok", outcome.Status);
+            Assert.Equal("Hello, world", outcome.Translation);
+            await serverTask;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static TranslationService CreateService(
+        string root,
+        string endpoint,
+        string providerId = ProviderPresets.DeepSeekId)
     {
         var paths = new AppPaths(root);
         var settingsStore = new SettingsStore(paths.SettingsFile);
-        var provider = settingsStore.Current.Providers.Single(item => item.Id == ProviderPresets.DeepSeekId);
+        var provider = settingsStore.Current.Providers.Single(item => item.Id == providerId);
         provider.Endpoint = endpoint;
         provider.Model = "test-model";
+        settingsStore.Current.ActiveProviderId = providerId;
         settingsStore.Current.ProxyMode = "direct";
         settingsStore.Current.RequestTimeoutSeconds = 2;
         settingsStore.Save(settingsStore.Current);

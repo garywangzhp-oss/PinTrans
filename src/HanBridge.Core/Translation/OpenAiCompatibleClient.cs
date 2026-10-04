@@ -7,7 +7,7 @@ namespace HanBridge.Core.Translation;
 
 public sealed class OpenAiCompatibleClient
 {
-    private const string PromptVersion = "2026-10-04.1";
+    private const string PromptVersion = "2026-10-04.2";
 
     public static string CurrentPromptVersion => PromptVersion;
 
@@ -90,20 +90,27 @@ public sealed class OpenAiCompatibleClient
             request.Headers.TryAddWithoutValidation("x-opencode-session", settings.OpenCodeSessionId);
         }
 
+        var openCodeMode = RequiresOpenCodeSession(provider);
+        var systemPrompt = openCodeMode
+            ? "You are a translation function. Translate Chinese into natural, concise, professional English. " +
+              "Preserve names, numbers, URLs, code, and existing English terms. " +
+              "Return only a JSON object with exactly one key: {\"translation\":\"...\"}. " +
+              "Do not add explanations, markdown, or any other keys."
+            : "Translate the user's Chinese text into natural, concise, professional English. " +
+              "Preserve names, numbers, URLs, code, and existing English terms. " +
+              "Return only the translation, with no explanation, quotes, markdown, or prefix.";
+
         var payload = new Dictionary<string, object?>
         {
             ["model"] = provider.Model,
-            ["temperature"] = 0.2,
+            ["temperature"] = openCodeMode ? 0.0 : 0.2,
             ["max_tokens"] = 512,
             ["messages"] = new object[]
             {
                 new
                 {
                     role = "system",
-                    content =
-                        "Translate the user's Chinese text into natural, concise, professional English. " +
-                        "Preserve names, numbers, URLs, code, and existing English terms. " +
-                        "Return only the translation, with no explanation, quotes, markdown, or prefix."
+                    content = systemPrompt
                 },
                 new
                 {
@@ -113,9 +120,10 @@ public sealed class OpenAiCompatibleClient
             }
         };
 
-        if (RequiresOpenCodeSession(provider))
+        if (openCodeMode)
         {
             payload["reasoning_effort"] = "none";
+            payload["response_format"] = new { type = "json_object" };
         }
 
         request.Content = new StringContent(
@@ -151,7 +159,13 @@ public sealed class OpenAiCompatibleClient
                 return ProviderCompletion.Failure("empty_response", statusCode);
             }
 
-            return ProviderCompletion.Success(content.Trim(), statusCode);
+            var translation = ExtractTranslation(content, openCodeMode);
+            if (string.IsNullOrWhiteSpace(translation))
+            {
+                return ProviderCompletion.Failure("translation_parse_failed", statusCode);
+            }
+
+            return ProviderCompletion.Success(translation, statusCode);
         }
         catch (JsonException)
         {
@@ -189,6 +203,31 @@ public sealed class OpenAiCompatibleClient
     private static bool RequiresOpenCodeSession(ProviderSettings provider) =>
         provider.Id.Equals(ProviderPresets.OpenCodeGoId, StringComparison.OrdinalIgnoreCase)
         || provider.Endpoint.Contains("opencode.ai/zen/go/", StringComparison.OrdinalIgnoreCase);
+
+    private static string? ExtractTranslation(string content, bool openCodeMode)
+    {
+        if (!openCodeMode)
+        {
+            return content.Trim();
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(content);
+            if (document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("translation", out var translation)
+                && translation.ValueKind == JsonValueKind.String)
+            {
+                return translation.GetString()?.Trim();
+            }
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
+    }
 
     private static string? TryExtractProviderError(string body)
     {
